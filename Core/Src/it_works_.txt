@@ -84,7 +84,8 @@ extern "C" PUTCHAR_PROTOTYPE
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t status, oled_status = 0;
+uint8_t oled_WriteCommand_status, oled_WriteData_status, oled_status1,
+		oled_status2 = 0;
 
 class OLED
 {
@@ -127,18 +128,18 @@ class OLED
 			// 0x3c --> 0x78
 			// 0x3d --> 0x7A
 
-			status = HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, _I2C_address, 0x00, 1,
-					&incoming_byte, 1,
+			oled_WriteCommand_status = HAL_I2C_Mem_Write(&SSD1306_I2C_PORT,
+					_I2C_address, 0x00, 1, &incoming_byte, 1,
 					HAL_MAX_DELAY);
 
-			printf("status : %d \r\n", status);
-
-			if (status != HAL_OK)
-			{
-				printf("ERROR TRANSMITTING I2C COMMAND : 0x%.2X  FROM 0x%.2X\r\n",
-						incoming_byte, _I2C_address);
-				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
-			}
+//			printf("oled_WriteCommand_status : %d \r\n", oled_WriteCommand_status);
+//
+//			if (oled_WriteCommand_status != HAL_OK)
+//			{
+//				printf("ERROR TRANSMITTING I2C COMMAND : 0x%.2X  FROM 0x%.2X\r\n",
+//						incoming_byte, _I2C_address);
+//				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+//			}
 		}
 
 		// Send data
@@ -149,6 +150,15 @@ class OLED
 //					_I2C_address, buffer, buff_size);
 			HAL_I2C_Mem_Write(&hi2c1, _I2C_address, 0x40, 1, buffer, buff_size,
 			HAL_MAX_DELAY);
+
+//			printf("oled_WriteData_status : %d \r\n", oled_WriteData_status);
+//
+//			if (oled_WriteData_status != HAL_OK)
+//			{
+//				printf("ERROR WRITING BUFFER : %d FOR SIZE : %d\r\n", buffer,
+//						buff_size);
+//				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+//			}
 		}
 		void test()
 		{
@@ -156,7 +166,7 @@ class OLED
 		}
 };
 
-void ssd1306_UpdateScreen(OLED &oled1)
+void ssd1306_UpdateScreen(OLED &oled1, OLED &oled2)
 {
 	// Write data to each page of RAM. Number of pages
 	// depends on the screen height:
@@ -174,6 +184,11 @@ void ssd1306_UpdateScreen(OLED &oled1)
 		oled1.oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
 		oled1.oled_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
 		oled1.oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
+
+		oled2.oled_WriteCommand(0xB0 + i);
+		oled2.oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
+		oled2.oled_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
+		oled2.oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
 
 	}
 }
@@ -248,21 +263,23 @@ int main(void)
 	OLED oled1;
 	OLED oled2;
 
-	oled_status = HAL_I2C_IsDeviceReady(&hi2c1, OLED1_Address, 3, 5);
+	// Set I2C addresses
+	oled1.set_I2C_Address(0x3C);
+	oled2.set_I2C_Address(0x3D);
 
-	if (oled_status != HAL_OK)
+	oled_status1 = HAL_I2C_IsDeviceReady(&hi2c1, oled1.get_I2C_Address(), 3, 5);
+	oled_status2 = HAL_I2C_IsDeviceReady(&hi2c1, oled2.get_I2C_Address(), 3, 5);
+
+	if (oled_status1 != HAL_OK && oled_status2 != HAL_OK)
 	{
+		// If error persists after uploading correct I2C address
+		// Power cycle the stm32 board
 		printf("ERROR WITH I2C CONNECTION \r\n");
 		Error_Handler();
 	}
 
 	HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
 	printf("PROGRAM STARTED\r\n");
-
-	// Set I2C addresses
-	oled1.set_I2C_Address(0x3C);
-	//oled1.set_I2C_Address(0x3C);
-	oled2.set_I2C_Address(0x3D);
 
 	// Set display OFF
 	oled1.oled_WriteCommand(0xAE);
@@ -375,12 +392,11 @@ int main(void)
 	//--turn on SSD1306 panel
 	oled1.oled_WriteCommand(0xAF);
 	oled2.oled_WriteCommand(0xAF);
-
-	// Clear screen
+//
+//	// Clear screen
 	ssd1306_Fill(White);
-	printf("--------------- FLAG ---------------\r\n");
-	ssd1306_UpdateScreen(oled1);
-	//updateScreen(oled1, oled2);
+//	printf("--------------- FLAG ---------------\r\n");
+	ssd1306_UpdateScreen(oled1, oled2);
 
 	/* USER CODE END 2 */
 

@@ -17,8 +17,9 @@
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <sys/_stdint.h>
 #include "main.h"
-
+#include "Font.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
@@ -49,11 +50,27 @@ UART_HandleTypeDef huart2;
 #define SSD1306_BUFFER_SIZE   128 * 64 / 8
 #define SSD1306_X_OFFSET_LOWER 0
 #define SSD1306_X_OFFSET_UPPER 0
-static uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+
+// Placing the buffers here require duplicates of the same functions to get the needed responses
+//static uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+//static uint8_t SSD1306_Buffer2[SSD1306_BUFFER_SIZE];
+
 #define SSD1306_WIDTH           128
 #define SSD1306_HEIGHT          64
 //#define OLED1_Address 				  0x78 //0x3C << 1 THIS WAS WRONG
 #define OLED1_Address 				  0x3C << 1
+#define SSD1306_INCLUDE_FONT_6x8
+#define SSD1306_INCLUDE_FONT_7x10
+#define SSD1306_INCLUDE_FONT_11x18
+#define SSD1306_INCLUDE_FONT_16x26
+//#ifdef SSD1306_INCLUDE_FONT_7x10
+//extern FontDef Font_7x10;
+//#endif
+//#ifdef SSD1306_INCLUDE_FONT_11x18
+//extern FontDef Font_11x18;
+//#endif
+//#ifdef SSD1306_INCLUDE_FONT_16x26
+//extern FontDef Font_16x26;
 
 // Enumeration for screen colors
 typedef enum
@@ -61,6 +78,13 @@ typedef enum
 	Black = 0x00, // Black color, no pixel
 	White = 0x01  // Pixel is set. Color depends on OLED
 } SSD1306_COLOR;
+
+typedef struct
+{
+		uint8_t FontWidth; /*!< Font width in pixels */
+		uint8_t FontHeight; /*!< Font height in pixels */
+		const uint16_t *data; /*!< Pointer to data font data array */
+} FontDef;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -84,7 +108,10 @@ extern "C" PUTCHAR_PROTOTYPE
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t status, oled_status = 0;
+
+uint8_t oled_WriteCommand_status, oled_WriteData_status, oled_status1,
+		oled_status2 = 0;
+FontDef Font_7x10 = { 7, 10, Font7x10 };
 
 class OLED
 {
@@ -98,27 +125,18 @@ class OLED
 		uint16_t CurrentX = 0;
 		uint16_t CurrentY = 0;
 		uint8_t Initialized = 0;
+		unsigned char current_Color = 0;
+		uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+
 	public:
 		void set_I2C_Address(unsigned char I2C_address)
 		{
-			//printf("OLED Address : 0x%.2X\r\n", I2C_address);
 			_I2C_address = I2C_address << 1;
-			//_I2C_address = I2C_address << 1;
 		}
 		unsigned char get_I2C_Address()
 		{
 			return _I2C_address;
 		}
-		void reset_OLED(void)
-		{
-			/* for I2C - do nothing */
-		}
-
-//		void ssd1306_WriteCommand(uint8_t byte)
-//		{
-//			HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 0x00, 1, &byte, 1,
-//			HAL_MAX_DELAY);
-//		}
 
 		void oled_WriteCommand(uint8_t incoming_byte)
 		{
@@ -127,13 +145,13 @@ class OLED
 			// 0x3c --> 0x78
 			// 0x3d --> 0x7A
 
-			status = HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, _I2C_address, 0x00, 1,
-					&incoming_byte, 1,
+			oled_WriteCommand_status = HAL_I2C_Mem_Write(&SSD1306_I2C_PORT,
+					_I2C_address, 0x00, 1, &incoming_byte, 1,
 					HAL_MAX_DELAY);
 
-			printf("status : %d \r\n", status);
+			//printf("oled_WriteCommand_status : %d \r\n", oled_WriteCommand_status);
 
-			if (status != HAL_OK)
+			if (oled_WriteCommand_status != HAL_OK)
 			{
 				printf("ERROR TRANSMITTING I2C COMMAND : 0x%.2X  FROM 0x%.2X\r\n",
 						incoming_byte, _I2C_address);
@@ -144,126 +162,176 @@ class OLED
 		// Send data
 		void oled_WriteData(uint8_t *buffer, size_t buff_size)
 		{
-//			printf(
-//					"I2C Address :  0x%.2X || Writing : 0x%.2x || With size : 0x%d \r\n",
+//			printf("I2C Address : 0x%.2X | Writing : %u | With size : 0x%d \r\n",
 //					_I2C_address, buffer, buff_size);
 			HAL_I2C_Mem_Write(&hi2c1, _I2C_address, 0x40, 1, buffer, buff_size,
 			HAL_MAX_DELAY);
+
+//			printf("oled_WriteData_status : %d \r\n", oled_WriteData_status);
+//
+//			if (oled_WriteData_status != HAL_OK)
+//			{
+//				printf("ERROR WRITING BUFFER : %hhn FOR SIZE : %d\r\n", (buffer),
+//						buff_size);
+//				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+//			}
 		}
-		void test()
+
+		void drawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color)
 		{
-			printf("OLED Address : 0x%.2X\r\n", _I2C_address);
+			if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT)
+			{
+				// Don't write outside the buffer
+				return;
+			}
+
+			// Draw in the right color
+			if (color == White)
+			{
+				SSD1306_Buffer[x + (y / 8) * SSD1306_WIDTH] |= 1 << (y % 8);
+
+			}
+			else
+			{
+				SSD1306_Buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8));
+
+			}
 		}
+
+		char writeChar(char ch, FontDef Font, SSD1306_COLOR color)
+		{
+			uint32_t i, b, j;
+			//printf("Font : %c \r\n", Font);
+			// Check if character is valid
+			if (ch < 32 || ch > 126)
+				return 0;
+
+			// Check remaining space on current line
+			if (SSD1306_WIDTH < (CurrentX + Font.FontWidth) ||
+			SSD1306_HEIGHT < (CurrentY + Font.FontHeight))
+			{
+				// Not enough space on current line
+				return 0;
+			}
+
+			// This is being skipped since Font Width and Height == 0
+			// Use the font to write
+			for (i = 0; i < Font.FontHeight; i++)
+			{
+				b = Font.data[(ch - 32) * Font.FontHeight + i];
+				for (j = 0; j < Font.FontWidth; j++)
+				{
+					if ((b << j) & 0x8000)
+					{
+						drawPixel(CurrentX + j, (CurrentY + i), (SSD1306_COLOR) color);
+					}
+					else
+					{
+						drawPixel(CurrentX + j, (CurrentY + i), (SSD1306_COLOR) !color);
+					}
+				}
+			}
+
+			// The current space is now taken
+			CurrentX += Font.FontWidth;
+
+			// Return written char for validation
+			return ch;
+		}
+
+		char writeString(char *str, FontDef Font, SSD1306_COLOR color)
+		{
+			// Write until null-byte
+			while (*str)
+			{
+				//printf("Char : %c \r\n", *str);
+				//printf("Oled %d : Char : %c \r\n", &oled, *str);
+				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+				if (writeChar(*str, Font, color) != *str)
+				{
+					// Char could not be written
+					printf("CHAR COULDN'T BE WRITTEN \r\n");
+					return *str;
+				}
+
+				// Next char
+				str++;
+				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
+			}
+			// Everything ok
+			return *str;
+		}
+
+		void SetCursor(uint8_t x, uint8_t y)
+		{
+			CurrentX = x;
+			CurrentY = y;
+
+			//printf("Current_X : %d \t Current_Y : %d\r\n", CurrentX, CurrentY);
+		}
+
+		void ssd1306_Fill(SSD1306_COLOR color)
+		{
+			// Black == 0x00
+			// White == 0x01
+			//printf("OLED 1 Color : %d \r\n", color);
+
+			//Set current color
+			set_Color(color);
+
+			/* Set memory */
+			uint32_t i;
+
+			for (i = 0; i < sizeof(SSD1306_Buffer); i++)
+			{
+				SSD1306_Buffer[i] = (color == Black) ? 0x00 : 0xFF;
+			}
+		}
+		void updateScreen()
+		{
+			//printf("%u \r\n", oled1.get_I2C_Address());
+
+			// Write data to each page of RAM. Number of pages
+			// depends on the screen height:
+			//
+			//  * 32px   ==  4 pages
+			//  * 64px   ==  8 pages
+			//  * 128px  ==  16 pages
+			for (uint8_t i = 0; i < SSD1306_HEIGHT / 8; i++)
+			{
+				// Set the current RAM page address.
+				oled_WriteCommand(0xB0 + i);
+
+				// Set column address 4 lower bits
+				oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
+
+				// Set column address 4 higher bits
+				oled_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
+
+				oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
+				//printf("Buffer1 : %c \r\n", SSD1306_Buffer[i]);
+			}
+		}
+
+		void set_Color(SSD1306_COLOR color)
+		{
+			current_Color = color;
+		}
+		void clearScreen()
+		{
+			for (uint32_t i = 0; i < sizeof(SSD1306_Buffer); i++)
+			{
+				SSD1306_Buffer[i] = (current_Color == Black) ? 0x00 : 0xFF;
+			}
+			updateScreen();
+
+		}
+
 };
+// End of 'class OLED'
 
-void ssd1306_UpdateScreen(OLED &oled1)
+void init_OLED_Screens(OLED &oled1, OLED &oled2)
 {
-	// Write data to each page of RAM. Number of pages
-	// depends on the screen height:
-	//
-	//  * 32px   ==  4 pages
-	//  * 64px   ==  8 pages
-	//  * 128px  ==  16 pages
-	for (uint8_t i = 0; i < SSD1306_HEIGHT / 8; i++)
-	{
-//		ssd1306_WriteCommand(0xB0 + i); // Set the current RAM page address.
-//		ssd1306_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-//		ssd1306_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
-//		ssd1306_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
-		oled1.oled_WriteCommand(0xB0 + i);
-		oled1.oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-		oled1.oled_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
-		oled1.oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
-
-	}
-}
-
-void updateScreen(OLED &oled1, OLED &oled2)
-{
-//	printf("------------------------\r\n");
-//	oled1.oled_WriteCommand(0x00);
-//	oled2.oled_WriteCommand(0x11);
-	for (uint8_t i = 0; i < SSD1306_HEIGHT / 8; i++)
-	{
-//		ssd1306_WriteCommand(0xB0 + i); // Set the current RAM page address.
-//		ssd1306_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-//		ssd1306_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
-//		ssd1306_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
-		oled1.oled_WriteCommand(0xB0 + i);
-		oled1.oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-		oled1.oled_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
-		oled1.oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
-//		oled2.oled_WriteCommand(0x00 + i);
-//		oled2.oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-//		oled2.oled_WriteCommand(0x00 + SSD1306_X_OFFSET_UPPER);
-//		oled2.oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
-
-	}
-}
-
-void ssd1306_Fill(SSD1306_COLOR color)
-{
-	/* Set memory */
-	uint32_t i;
-
-	for (i = 0; i < sizeof(SSD1306_Buffer); i++)
-	{
-		SSD1306_Buffer[i] = (color == Black) ? 0x00 : 0xFF;
-	}
-}
-
-/* USER CODE END 0 */
-
-/**
- * @brief  The application entry point.
- * @retval int
- */
-int main(void)
-{
-	/* USER CODE BEGIN 1 */
-
-	/* USER CODE END 1 */
-
-	/* MCU Configuration--------------------------------------------------------*/
-
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
-
-	/* USER CODE BEGIN Init */
-
-	/* USER CODE END Init */
-
-	/* Configure the system clock */
-	SystemClock_Config();
-
-	/* USER CODE BEGIN SysInit */
-
-	/* USER CODE END SysInit */
-
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_USART2_UART_Init();
-	MX_I2C1_Init();
-	/* USER CODE BEGIN 2 */
-	OLED oled1;
-	OLED oled2;
-
-	oled_status = HAL_I2C_IsDeviceReady(&hi2c1, OLED1_Address, 3, 5);
-
-	if (oled_status != HAL_OK)
-	{
-		printf("ERROR WITH I2C CONNECTION \r\n");
-		Error_Handler();
-	}
-
-	HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
-	printf("PROGRAM STARTED\r\n");
-
-	// Set I2C addresses
-	oled1.set_I2C_Address(0x3C);
-	//oled1.set_I2C_Address(0x3C);
-	oled2.set_I2C_Address(0x3D);
-
 	// Set display OFF
 	oled1.oled_WriteCommand(0xAE);
 	oled2.oled_WriteCommand(0xAE);
@@ -371,17 +439,105 @@ int main(void)
 	oled1.oled_WriteCommand(0x14);
 	oled2.oled_WriteCommand(0x14);
 
-	//printf("FLAG\r\n");
 	//--turn on SSD1306 panel
 	oled1.oled_WriteCommand(0xAF);
 	oled2.oled_WriteCommand(0xAF);
+}
 
-	// Clear screen
-	ssd1306_Fill(White);
-	printf("--------------- FLAG ---------------\r\n");
-	ssd1306_UpdateScreen(oled1);
-	//updateScreen(oled1, oled2);
+/* USER CODE END 0 */
 
+/**
+ * @brief  The application entry point.
+ * @retval int
+ */
+int main(void)
+{
+	/* USER CODE BEGIN 1 */
+
+	/* USER CODE END 1 */
+
+	/* MCU Configuration--------------------------------------------------------*/
+
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
+
+	/* USER CODE BEGIN Init */
+
+	/* USER CODE END Init */
+
+	/* Configure the system clock */
+	SystemClock_Config();
+
+	/* USER CODE BEGIN SysInit */
+
+	/* USER CODE END SysInit */
+
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_USART2_UART_Init();
+	MX_I2C1_Init();
+
+	/* USER CODE BEGIN 2 */
+	OLED oled1;
+	OLED oled2;
+
+	// Set I2C addresses
+	oled1.set_I2C_Address(0x3C);
+	oled2.set_I2C_Address(0x3D);
+
+	oled_status1 = HAL_I2C_IsDeviceReady(&hi2c1, oled1.get_I2C_Address(), 3, 5);
+	oled_status2 = HAL_I2C_IsDeviceReady(&hi2c1, oled2.get_I2C_Address(), 3, 5);
+
+	if (oled_status1 != HAL_OK && oled_status2 != HAL_OK)
+	{
+		// If error persists after uploading correct I2C address
+		// Power cycle the stm32 board
+		printf("ERROR WITH I2C CONNECTION \r\n");
+		Error_Handler();
+	}
+
+	HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
+	printf("PROGRAM STARTED\r\n");
+
+	init_OLED_Screens(oled1, oled2);
+
+	oled1.ssd1306_Fill(White);
+	oled2.ssd1306_Fill(Black);
+
+	oled1.SetCursor(5, 5);
+	oled2.SetCursor(5, 30);
+
+	char text1[] = "Screen 1";
+	char text2[] = "Screen 2";
+
+	oled1.writeString(text1, Font_7x10, Black);
+	oled2.writeString(text2, Font_7x10, White);
+
+	// The problem is here
+	oled1.updateScreen();
+	oled2.updateScreen();
+
+	oled1.ssd1306_Fill(White);
+	oled2.ssd1306_Fill(Black);
+
+	oled1.SetCursor(1, 1);
+	oled2.SetCursor(1, 5);
+	HAL_Delay(1000);
+
+	char text1_[] = "MORE TEXT 1";
+	char text2_[] = "MORE TEXT 2";
+
+	oled1.writeString(text1_, Font_7x10, Black);
+	oled2.writeString(text2_, Font_7x10, White);
+
+	oled1.updateScreen();
+	oled2.updateScreen();
+
+	printf("CLEARING SCREENS\r\n");
+	HAL_Delay(2000);
+
+	oled1.clearScreen();
+	oled2.clearScreen();
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
