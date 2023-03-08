@@ -46,23 +46,22 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-#define SSD1306_I2C_PORT        hi2c1
-#define SSD1306_BUFFER_SIZE   128 * 64 / 8
-#define SSD1306_X_OFFSET_LOWER 0
-#define SSD1306_X_OFFSET_UPPER 0
+#define OLED_I2C_PORT        hi2c1
+#define OLED_BUFFER_SIZE   128 * 64 / 8
+#define X_OFFSET_LOWER 0
+#define X_OFFSET_UPPER 0
 
 // Placing the buffers here require duplicates of the same functions to get the needed responses
-//static uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
-//static uint8_t SSD1306_Buffer2[SSD1306_BUFFER_SIZE];
+//static uint8_t SSD1306_Buffer[OLED_BUFFER_SIZE];
+//static uint8_t SSD1306_Buffer2[OLED_BUFFER_SIZE];
 
-#define SSD1306_WIDTH           128
-#define SSD1306_HEIGHT          64
+#define OLED_WIDTH           128
+#define OLED_HEIGHT          64
 //#define OLED1_Address 				  0x78 //0x3C << 1 THIS WAS WRONG
-#define OLED1_Address 				  0x3C << 1
-#define SSD1306_INCLUDE_FONT_6x8
-#define SSD1306_INCLUDE_FONT_7x10
-#define SSD1306_INCLUDE_FONT_11x18
-#define SSD1306_INCLUDE_FONT_16x26
+#define INCLUDE_FONT_6x8
+#define INCLUDE_FONT_7x10
+#define INCLUDE_FONT_11x18
+#define INCLUDE_FONT_16x26
 //#ifdef SSD1306_INCLUDE_FONT_7x10
 //extern FontDef Font_7x10;
 //#endif
@@ -126,7 +125,7 @@ class OLED
 		uint16_t CurrentY = 0;
 		uint8_t Initialized = 0;
 		unsigned char current_Color = 0;
-		uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+		uint8_t SSD1306_Buffer[OLED_BUFFER_SIZE];
 
 	public:
 		void set_I2C_Address(unsigned char I2C_address)
@@ -145,8 +144,8 @@ class OLED
 			// 0x3c --> 0x78
 			// 0x3d --> 0x7A
 
-			oled_WriteCommand_status = HAL_I2C_Mem_Write(&SSD1306_I2C_PORT,
-					_I2C_address, 0x00, 1, &incoming_byte, 1,
+			oled_WriteCommand_status = HAL_I2C_Mem_Write(&OLED_I2C_PORT, _I2C_address,
+					0x00, 1, &incoming_byte, 1,
 					HAL_MAX_DELAY);
 
 			//printf("oled_WriteCommand_status : %d \r\n", oled_WriteCommand_status);
@@ -167,19 +166,19 @@ class OLED
 			HAL_I2C_Mem_Write(&hi2c1, _I2C_address, 0x40, 1, buffer, buff_size,
 			HAL_MAX_DELAY);
 
-//			printf("oled_WriteData_status : %d \r\n", oled_WriteData_status);
-//
-//			if (oled_WriteData_status != HAL_OK)
-//			{
-//				printf("ERROR WRITING BUFFER : %hhn FOR SIZE : %d\r\n", (buffer),
-//						buff_size);
-//				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
-//			}
+			printf("oled_WriteData_status : %d \r\n", oled_WriteData_status);
+
+			if (oled_WriteData_status != HAL_OK)
+			{
+				printf("ERROR WRITING BUFFER : %hhn FOR SIZE : %d\r\n", (buffer),
+						buff_size);
+				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+			}
 		}
 
 		void drawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color)
 		{
-			if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT)
+			if (x >= OLED_WIDTH || y >= OLED_HEIGHT)
 			{
 				// Don't write outside the buffer
 				return;
@@ -188,12 +187,12 @@ class OLED
 			// Draw in the right color
 			if (color == White)
 			{
-				SSD1306_Buffer[x + (y / 8) * SSD1306_WIDTH] |= 1 << (y % 8);
+				SSD1306_Buffer[x + (y / 8) * OLED_WIDTH] |= 1 << (y % 8);
 
 			}
 			else
 			{
-				SSD1306_Buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8));
+				SSD1306_Buffer[x + (y / 8) * OLED_WIDTH] &= ~(1 << (y % 8));
 
 			}
 		}
@@ -201,14 +200,13 @@ class OLED
 		char writeChar(char ch, FontDef Font, SSD1306_COLOR color)
 		{
 			uint32_t i, b, j;
-			//printf("Font : %c \r\n", Font);
 			// Check if character is valid
 			if (ch < 32 || ch > 126)
 				return 0;
 
 			// Check remaining space on current line
-			if (SSD1306_WIDTH < (CurrentX + Font.FontWidth) ||
-			SSD1306_HEIGHT < (CurrentY + Font.FontHeight))
+			if (OLED_WIDTH < (CurrentX + Font.FontWidth) ||
+			OLED_HEIGHT < (CurrentY + Font.FontHeight))
 			{
 				// Not enough space on current line
 				return 0;
@@ -244,8 +242,6 @@ class OLED
 			// Write until null-byte
 			while (*str)
 			{
-				//printf("Char : %c \r\n", *str);
-				//printf("Oled %d : Char : %c \r\n", &oled, *str);
 				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
 				if (writeChar(*str, Font, color) != *str)
 				{
@@ -297,18 +293,18 @@ class OLED
 			//  * 32px   ==  4 pages
 			//  * 64px   ==  8 pages
 			//  * 128px  ==  16 pages
-			for (uint8_t i = 0; i < SSD1306_HEIGHT / 8; i++)
+			for (uint8_t i = 0; i < OLED_HEIGHT / 8; i++)
 			{
 				// Set the current RAM page address.
 				oled_WriteCommand(0xB0 + i);
 
 				// Set column address 4 lower bits
-				oled_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
+				oled_WriteCommand(0x00 + X_OFFSET_LOWER);
 
 				// Set column address 4 higher bits
-				oled_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
+				oled_WriteCommand(0x10 + X_OFFSET_UPPER);
 
-				oled_WriteData(&SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
+				oled_WriteData(&SSD1306_Buffer[OLED_WIDTH * i], OLED_WIDTH);
 				//printf("Buffer1 : %c \r\n", SSD1306_Buffer[i]);
 			}
 		}
