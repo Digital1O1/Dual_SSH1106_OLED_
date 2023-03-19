@@ -20,6 +20,9 @@
 #include <sys/_stdint.h>
 #include "main.h"
 #include "Font.h"
+#include <string.h>
+#include <stdio.h>
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
@@ -47,7 +50,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 #define OLED_I2C_PORT        hi2c1
-#define OLED_BUFFER_SIZE   128 * 64 / 8
+#define OLED_BUFFER_SIZE   130 * 64 / 8
 #define X_OFFSET_LOWER 0
 #define X_OFFSET_UPPER 0
 
@@ -55,22 +58,13 @@ UART_HandleTypeDef huart2;
 //static uint8_t SSD1306_Buffer[OLED_BUFFER_SIZE];
 //static uint8_t SSD1306_Buffer2[OLED_BUFFER_SIZE];
 
-#define OLED_WIDTH           128
+#define OLED_WIDTH           130
 #define OLED_HEIGHT          64
 //#define OLED1_Address 				  0x78 //0x3C << 1 THIS WAS WRONG
 #define INCLUDE_FONT_6x8
 #define INCLUDE_FONT_7x10
 #define INCLUDE_FONT_11x18
 #define INCLUDE_FONT_16x26
-//#ifdef SSD1306_INCLUDE_FONT_7x10
-//extern FontDef Font_7x10;
-//#endif
-//#ifdef SSD1306_INCLUDE_FONT_11x18
-//extern FontDef Font_11x18;
-//#endif
-//#ifdef SSD1306_INCLUDE_FONT_16x26
-//extern FontDef Font_16x26;
-
 // Enumeration for screen colors
 typedef enum
 {
@@ -166,7 +160,7 @@ class OLED
 			HAL_I2C_Mem_Write(&hi2c1, _I2C_address, 0x40, 1, buffer, buff_size,
 			HAL_MAX_DELAY);
 
-			printf("oled_WriteData_status : %d \r\n", oled_WriteData_status);
+			//printf("oled_WriteData_status : %d \r\n", oled_WriteData_status);
 
 			if (oled_WriteData_status != HAL_OK)
 			{
@@ -249,12 +243,9 @@ class OLED
 					printf("CHAR COULDN'T BE WRITTEN \r\n");
 					return *str;
 				}
-
-				// Next char
 				str++;
 				HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
 			}
-			// Everything ok
 			return *str;
 		}
 
@@ -262,16 +253,10 @@ class OLED
 		{
 			CurrentX = x;
 			CurrentY = y;
-
-			//printf("Current_X : %d \t Current_Y : %d\r\n", CurrentX, CurrentY);
 		}
 
-		void ssd1306_Fill(SSD1306_COLOR color)
+		void fillScreen(SSD1306_COLOR color)
 		{
-			// Black == 0x00
-			// White == 0x01
-			//printf("OLED 1 Color : %d \r\n", color);
-
 			//Set current color
 			set_Color(color);
 
@@ -285,8 +270,6 @@ class OLED
 		}
 		void updateScreen()
 		{
-			//printf("%u \r\n", oled1.get_I2C_Address());
-
 			// Write data to each page of RAM. Number of pages
 			// depends on the screen height:
 			//
@@ -489,6 +472,8 @@ int main(void)
 		// If error persists after uploading correct I2C address
 		// Power cycle the stm32 board
 		printf("ERROR WITH I2C CONNECTION \r\n");
+		printf("IF THE PROBLEM IS PERSISTANT, POWER CYCLE YOUR DEVICE\r\n");
+
 		Error_Handler();
 	}
 
@@ -497,49 +482,89 @@ int main(void)
 
 	init_OLED_Screens(oled1, oled2);
 
-	oled1.ssd1306_Fill(White);
-	oled2.ssd1306_Fill(Black);
+	oled1.fillScreen(White);
+	oled2.fillScreen(Black);
 
-	oled1.SetCursor(5, 5);
-	oled2.SetCursor(5, 30);
+//	oled1.SetCursor(5, 5);
+//	oled2.SetCursor(5, 30);
+//
+//	char text1[] = "Screen 1";
+//	char text2[] = "Screen 2";
+//
+//	oled1.writeString(text1, Font_7x10, Black);
+//	oled2.writeString(text2, Font_7x10, White);
+//
+//	oled1.updateScreen();
+//	oled2.updateScreen();
+//
+//	oled1.clearScreen();
+//	oled2.clearScreen();
+//
+//	oled1.SetCursor(1, 1);
+//	oled2.SetCursor(1, 5);
+//	HAL_Delay(1000);
+//
+//	char text1_[] = "HELLO WORLD 1";
+//	char text2_[] = "HELLO WORLD 2";
+//
+//	oled1.writeString(text1_, Font_7x10, Black);
+//	oled2.writeString(text2_, Font_7x10, White);
+//
+//	oled1.updateScreen();
+//	oled2.updateScreen();
 
-	char text1[] = "Screen 1";
-	char text2[] = "Screen 2";
+	oled1.SetCursor(30, 1);
+	oled2.SetCursor(30, 1);
 
-	oled1.writeString(text1, Font_7x10, Black);
-	oled2.writeString(text2, Font_7x10, White);
-
-	// The problem is here
-	oled1.updateScreen();
-	oled2.updateScreen();
-
-	oled1.ssd1306_Fill(White);
-	oled2.ssd1306_Fill(Black);
-
-	oled1.SetCursor(1, 1);
-	oled2.SetCursor(1, 5);
-	HAL_Delay(1000);
-
-	char text1_[] = "MORE TEXT 1";
-	char text2_[] = "MORE TEXT 2";
+	char text1_[] = "TESTING OLED";
+	char text2_[] = "TESTING OLED";
 
 	oled1.writeString(text1_, Font_7x10, Black);
 	oled2.writeString(text2_, Font_7x10, White);
 
+	oled1.SetCursor(30, 30);
+	oled2.SetCursor(30, 30);
+
+	char text1__[] = "SCREEN";
+	char text2__[] = "SCREEN";
+
+	oled1.writeString(text1__, Font_7x10, Black);
+	oled2.writeString(text2__, Font_7x10, White);
+
 	oled1.updateScreen();
 	oled2.updateScreen();
 
-	printf("CLEARING SCREENS\r\n");
-	HAL_Delay(2000);
+	oled1.SetCursor(30, 50);
+	oled2.SetCursor(30, 50);
 
-	oled1.clearScreen();
-	oled2.clearScreen();
+	int count_1 = 1;
+	char count_1_array[100];
+	int count_2 = 13;
+	char count_2_array[100];
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1)
 	{
+		oled1.SetCursor(30, 50);
+
+		// int snprintf ( char * s, size_t n, const char * format, ... );
+		// Parameters [ where it's stored , number of bytes , format , variable to be stored ]
+		count_1++;
+
+		// snprintf() needs to be used for displaying integer values since writeString() takes a char pointer
+		// More details about arrays vs char pointers can be found here : https://www.youtube.com/watch?v=Qp3WatLL_Hc&ab_channel=PortfolioCourses
+		snprintf(count_1_array, 100, "%d", count_1);
+		oled1.writeString(count_1_array, Font_7x10, Black);
+		oled1.updateScreen();
+
+		oled2.SetCursor(30, 50);
+		count_2 += 5;
+		snprintf(count_2_array, 100, "%d", count_2);
+		oled2.writeString(count_2_array, Font_7x10, White);
+		oled2.updateScreen();
+		HAL_Delay(1);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */

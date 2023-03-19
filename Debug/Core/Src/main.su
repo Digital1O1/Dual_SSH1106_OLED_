@@ -1,21 +1,20 @@
-../Core/Src/main.cpp:101:12:int __io_putchar(int)	16	static
-../Core/Src/main.cpp:131:8:void OLED::set_I2C_Address(unsigned char)	16	static
-../Core/Src/main.cpp:135:17:unsigned char OLED::get_I2C_Address()	16	static
-../Core/Src/main.cpp:140:8:void OLED::oled_WriteCommand(uint8_t)	32	static
-../Core/Src/main.cpp:162:8:void OLED::oled_WriteData(uint8_t*, size_t)	40	static
-../Core/Src/main.cpp:179:8:void OLED::drawPixel(uint8_t, uint8_t, SSD1306_COLOR)	16	static
-../Core/Src/main.cpp:200:8:char OLED::writeChar(char, FontDef, SSD1306_COLOR)	40	static
-../Core/Src/main.cpp:240:8:char OLED::writeString(char*, FontDef, SSD1306_COLOR)	32	static
-../Core/Src/main.cpp:261:8:void OLED::SetCursor(uint8_t, uint8_t)	16	static
-../Core/Src/main.cpp:269:8:void OLED::ssd1306_Fill(SSD1306_COLOR)	24	static
-../Core/Src/main.cpp:286:8:void OLED::updateScreen()	24	static
-../Core/Src/main.cpp:312:8:void OLED::set_Color(SSD1306_COLOR)	16	static
-../Core/Src/main.cpp:316:8:void OLED::clearScreen()	24	static
-../Core/Src/main.cpp:329:6:void init_OLED_Screens(OLED&, OLED&)	16	static
-../Core/Src/main.cpp:115:7:OLED::OLED()	16	static
-../Core/Src/main.cpp:449:5:int main()	2128	static
-../Core/Src/main.cpp:554:6:void SystemClock_Config()	88	static
-../Core/Src/main.cpp:596:13:void MX_I2C1_Init()	8	static
-../Core/Src/main.cpp:630:13:void MX_USART2_UART_Init()	8	static
-../Core/Src/main.cpp:663:13:void MX_GPIO_Init()	40	static
-../Core/Src/main.cpp:691:6:void Error_Handler()	4	static,ignoring_inline_asm
+../Core/Src/main.cpp:95:12:int __io_putchar(int)	16	static
+../Core/Src/main.cpp:125:8:void OLED::set_I2C_Address(unsigned char)	16	static
+../Core/Src/main.cpp:129:17:unsigned char OLED::get_I2C_Address()	16	static
+../Core/Src/main.cpp:134:8:void OLED::oled_WriteCommand(uint8_t)	32	static
+../Core/Src/main.cpp:156:8:void OLED::oled_WriteData(uint8_t*, size_t)	40	static
+../Core/Src/main.cpp:173:8:void OLED::drawPixel(uint8_t, uint8_t, SSD1306_COLOR)	16	static
+../Core/Src/main.cpp:194:8:char OLED::writeChar(char, FontDef, SSD1306_COLOR)	40	static
+../Core/Src/main.cpp:234:8:char OLED::writeString(char*, FontDef, SSD1306_COLOR)	32	static
+../Core/Src/main.cpp:252:8:void OLED::SetCursor(uint8_t, uint8_t)	16	static
+../Core/Src/main.cpp:258:8:void OLED::fillScreen(SSD1306_COLOR)	24	static
+../Core/Src/main.cpp:271:8:void OLED::updateScreen()	24	static
+../Core/Src/main.cpp:295:8:void OLED::set_Color(SSD1306_COLOR)	16	static
+../Core/Src/main.cpp:312:6:void init_OLED_Screens(OLED&, OLED&)	16	static
+../Core/Src/main.cpp:109:7:OLED::OLED()	16	static
+../Core/Src/main.cpp:432:5:int main()	2376	static
+../Core/Src/main.cpp:576:6:void SystemClock_Config()	88	static
+../Core/Src/main.cpp:618:13:void MX_I2C1_Init()	8	static
+../Core/Src/main.cpp:652:13:void MX_USART2_UART_Init()	8	static
+../Core/Src/main.cpp:685:13:void MX_GPIO_Init()	40	static
+../Core/Src/main.cpp:713:6:void Error_Handler()	4	static,ignoring_inline_asm
